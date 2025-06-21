@@ -7,12 +7,28 @@ function New-ScriptStub {
         [string]$FunctionName
     )
 
+    if (-not $FunctionName) {
+        $approvedVerbs = Get-Verb | Select-Object -ExpandProperty Verb
+        do {
+            $verb = Read-Host "Enter a verb (e.g., Get, Set, New)"
+            if ($approvedVerbs -contains $verb) {
+                break
+            }
+            else {
+                Write-Host "The verb '$verb' is not an approved PowerShell verb. Please try again."
+            }
+        } while ($true)
+
+        $noun = Read-Host "Enter a noun (e.g., Item, User, File)"
+        $FunctionName = "$verb-$noun"
+    }
+
     $ScriptBlock = @"
 function $FunctionName {
     param (
         [string]`$name
     )
-    Write-Host "Hello, `"`$name`"!"
+    Write-Host "Hello, `$name!"
 }
 
 # For debugging in VS Code.
@@ -22,18 +38,24 @@ if (`$MyInvocation.InvocationName -ne ".") {
 }
 "@
 
-    $FolderName = "PS$FunctionName"
+    $FunctionNameNoHyphens = $FunctionName -replace '-', ''
+
+    $FolderName = "PS$FunctionNameNoHyphens"
     $FolderPath = Join-Path -Path (Get-Location) -ChildPath $FolderName
     if (-not (Test-Path -Path $FolderPath)) {
         New-Item -Path $FolderPath -ItemType Directory | Out-Null
     }
-    $FilePath = Join-Path -Path $FolderPath -ChildPath "$FunctionName.ps1"
+    $FilePath = Join-Path -Path $FolderPath -ChildPath "$FunctionNameNoHyphens.ps1"
 
-    Set-Content -Path $FilePath -Value $ScriptBlock
+    if (Test-Path -Path $FilePath) {
+        Write-Host "File '$FilePath' already exists. Skipping creation."
+    } else {
+        Set-Content -Path $FilePath -Value $ScriptBlock
+    }
     Write-Host "Script stub created at: $FilePath"
 }
 
 # For debugging in VS Code.
 If ($MyInvocation.InvocationName -ne ".") {
-    New-ScriptStub -FunctionName "Greet"
+    New-ScriptStub
 }
